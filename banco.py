@@ -1,22 +1,27 @@
-import sqlite3
+import mysql.connector
 import hashlib
 
-
-DB_NAME = 'banco.db'
-
 def conectar():
-    """Establece y devuelve la conexión a la base de datos."""
-    return sqlite3.connect(DB_NAME)
+    """Establece la conexión a XAMPP (MySQL local)."""
+    return mysql.connector.connect(
+        host="127.0.0.1",
+        user="root",
+        password="",     
+        database="banco_db"
+    )
 
 def login(usuario, password):
-    """Verifica las credenciales contra la base de datos."""
     conexion = conectar()
     cursor = conexion.cursor()
-    "ESTOY ASUMIENDO QUE CODIFICAMOS CON SHA256, SIN SALT NI NA LUEGO HAY QUE CAMBIARLO"
+    
+    # Encriptamos la contraseña introducida para compararla con la base de datos
     pwd_hash = hashlib.sha256(password.encode()).hexdigest()
 
-    cursor.execute("SELECT saldo FROM cuentas WHERE nombre = ? AND password_hash = ?", (usuario, pwd_hash))
+    # Usamos %s en lugar de ? para MySQL
+    cursor.execute("SELECT saldo FROM cuentas WHERE nombre = %s AND password_hash = %s", (usuario, pwd_hash))
     resultado = cursor.fetchone()
+    
+    cursor.close()
     conexion.close()
 
     if resultado:
@@ -24,24 +29,27 @@ def login(usuario, password):
     return False, 0
 
 def modificar_saldo(usuario, cantidad):
-    """Suma o resta dinero y devuelve el nuevo saldo."""
     conexion = conectar()
     cursor = conexion.cursor()
 
-    cursor.execute("UPDATE cuentas SET saldo = saldo + ? WHERE nombre = ?", (cantidad, usuario))
+    # Modificamos el saldo
+    cursor.execute("UPDATE cuentas SET saldo = saldo + %s WHERE nombre = %s", (cantidad, usuario))
     conexion.commit()
 
-    cursor.execute("SELECT saldo FROM cuentas WHERE nombre = ?", (usuario,))
+    # Recuperamos el nuevo saldo
+    cursor.execute("SELECT saldo FROM cuentas WHERE nombre = %s", (usuario,))
     nuevo_saldo = cursor.fetchone()[0]
+    
+    cursor.close()
     conexion.close()
 
     return nuevo_saldo
 
 def iniciar_cliente():
+    print("--- CONECTANDO A BASE DE DATOS MYSQL ---")
     sesion_activa = None
 
     while True:
-        # 1. Gestión de Login
         if not sesion_activa:
             print("\n[--- INICIO DE SESIÓN ---]")
             user = input("Usuario: ")
@@ -49,21 +57,20 @@ def iniciar_cliente():
             
             exito, saldo = login(user, pwd)
             if exito:
-                print(f"[+] Login exitoso. Saldo actual: {saldo:.2f}€")
+                print(f"\n[+] Login exitoso. Saldo actual: {saldo:.2f}€")
                 sesion_activa = user
             else:
-                print("[-] Credenciales incorrectas. Inténtalo de nuevo.")
+                print("\n[-] Credenciales incorrectas. Inténtalo de nuevo.")
                 
-        # 2. Gestión de Eventos (Ingresar, Retirar, Logout)
         else:
-            entrada = input(f"({sesion_activa}) > ").strip().split()
+            entrada = input(f"\n({sesion_activa}) > ").strip().split()
             if not entrada:
                 continue
 
             comando = entrada[0].lower()
 
             if comando == 'logout':
-                print(f"[-] Sesión cerrada.")
+                print("[-] Sesión cerrada.")
                 sesion_activa = None
 
             elif comando == 'ingresar' and len(entrada) == 2:
@@ -81,9 +88,12 @@ def iniciar_cliente():
                 try:
                     cantidad = float(entrada[1])
                     if cantidad > 0:
-                        # Verificación rápida de fondos antes de restar
+                        # Verificamos los fondos antes de retirar
                         conexion = conectar()
-                        saldo_actual = conexion.execute("SELECT saldo FROM cuentas WHERE nombre = ?", (sesion_activa,)).fetchone()[0]
+                        cursor = conexion.cursor()
+                        cursor.execute("SELECT saldo FROM cuentas WHERE nombre = %s", (sesion_activa,))
+                        saldo_actual = cursor.fetchone()[0]
+                        cursor.close()
                         conexion.close()
 
                         if saldo_actual >= cantidad:
