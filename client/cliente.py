@@ -1,11 +1,9 @@
 import socket
-import threading
 import json
-import mysql.connector
-import hashlib
 
-HOST = "192.169.1.62" '''Cambiar IP en caso de usar otro servidor 
+'''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
+HOST = "192.168.1.62" 
 
 PORT = 5000
 
@@ -38,7 +36,7 @@ def inicia_cliente():
                 req = {"accion": "login", "usuario": usuario, "password": contraseña}
                 res = enviar_peticion(cliente_socket, req)
 
-                if res["Status"] == "ok":
+                if res["status"] == "ok":
                     print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
                     sesion_activa = usuario
                 else:
@@ -63,7 +61,7 @@ def inicia_cliente():
                             req = {"accion": "ingresar", "usuario": sesion_activa, "cantidad": cantidad}
                             res = enviar_peticion(cliente_socket, req)
 
-                            if res["Status"] == "ok":
+                            if res["status"] == "ok":
                                 print(f"[+] Has ingresado {cantidad:.2f}€. Nuevo saldo: {res['saldo']:.2f}€")
                             else:
                                 print(f"\n[-] {res['mensaje']}")
@@ -84,7 +82,7 @@ def inicia_cliente():
                                         res = enviar_peticion(cliente_socket, req)
 
 
-                                        if res["Status"] == "ok":
+                                        if res["status"] == "ok":
                                             print(f"[+] Has retirado {cantidad:.2f}€. Nuevo saldo: {res['saldo']:.2f}€")
 
                                         else:
