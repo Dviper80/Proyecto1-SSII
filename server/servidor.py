@@ -8,6 +8,10 @@ HOST = "0.0.0.0"
 PORT = 5000
 
 
+MAX_CONNECTIONS = 2
+semaforo = threading.Semaphore(MAX_CONNECTIONS)
+
+
 def procesar_peticion(pet):
     accion = pet.get("accion")
 
@@ -72,6 +76,7 @@ def atiende_cliente(con, addr):
 
      finally:
           con.close()
+          semaforo.release()
           print(f"[-] Conexion cerrada con {addr}")
 
 
@@ -84,9 +89,18 @@ def inicia_servidor():
 
      while True:
           con, addr = servidor.accept()
-          hilo = threading.Thread(target=atiende_cliente, args=(con,addr))
-          hilo.daemon = True
-          hilo.start()
+          if semaforo.acquire(blocking=False):
+               hilo = threading.Thread(target=atiende_cliente, args=(con,addr))
+               hilo.daemon = True
+               hilo.start()
+          else:
+               print(f"[!] Conexión rechazada desde {addr}: Límite alcanzado")
+               resp_err = {"status": "error", "mensaje": "Servidor lleno. Limite de conexiones alcanzado"}
+               try:
+                    con.sendall(json.dumps(resp_err).encode("utf-8"))
+               except Exception:
+                    pass
+               con.close()
 
 if __name__ == '__main__':
      inicia_servidor()
