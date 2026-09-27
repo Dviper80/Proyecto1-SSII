@@ -42,7 +42,7 @@ def procesar_peticion(pet):
         try:
             conexion = banco.conectar()
             cursor = conexion.cursor()
-            cursor.execute("SELECT saldo FROM cuentas WHERE nombre = %s", (usuario))
+            cursor.execute("SELECT saldo FROM cuentas WHERE nombre = %s", (usuario,))
             saldo_actual = cursor.fetchone()
             cursor.close()
             conexion.close()
