@@ -26,9 +26,11 @@ def inicia_cliente():
         return
     
     sesion_activa = None
+    token_sesion = None
+
     try:
         while True:
-            if not sesion_activa:
+            if not token_sesion:
                 print("\n[--- INICIAR SESIÓN ---]")
                 usuario = input("Usuario: ")
                 contraseña = input("Contraseña: ")
@@ -37,8 +39,10 @@ def inicia_cliente():
                 res = enviar_peticion(cliente_socket, req)
 
                 if res["status"] == "ok":
-                    print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    token_sesion = res.get("token")
                     sesion_activa = usuario
+                    print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    
                 else:
                     print(f"\n[-] {res['mensaje']}. Inténtalo de nuevo.")
 
@@ -50,15 +54,18 @@ def inicia_cliente():
                 comando = entrada[0].lower()
 
                 if comando == 'logout':
-                    print("[-] Sesión cerrada.")
+                    req = {"acccion": "logout", "token":token_sesion}
+                    res = enviar_peticion(cliente_socket, req)
+                    print(f"[-] {res.get("mensaje")}")
                     sesion_activa = None
+                    token_sesion = None
 
                 elif comando == 'ingresar' and len(entrada) == 2:
 
                     try:
                         cantidad = float(entrada[1])
                         if cantidad > 0:
-                            req = {"accion": "ingresar", "usuario": sesion_activa, "cantidad": cantidad}
+                            req = {"accion": "ingresar", "token": token_sesion, "cantidad": cantidad}
                             res = enviar_peticion(cliente_socket, req)
 
                             if res["status"] == "ok":
@@ -78,7 +85,7 @@ def inicia_cliente():
                                     
                                     if cantidad > 0:
                                         # Verificamos los fondos antes de retirar
-                                        req = {"accion": "retirar", "usuario": sesion_activa, "cantidad": cantidad}
+                                        req = {"accion": "retirar", "token":token_sesion, "cantidad": cantidad}
                                         res = enviar_peticion(cliente_socket, req)
 
 
@@ -95,6 +102,7 @@ def inicia_cliente():
                 else:
                     print("[-] Comandos válidos: ingresar <monto> | retirar <monto> | logout")
     except KeyboardInterrupt:
+        
         print("\n[-] Saliendo...")
 
     finally:

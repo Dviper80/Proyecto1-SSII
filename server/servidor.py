@@ -1,12 +1,15 @@
 import socket
 import threading
 import json
+import uuid
 import banco
 
 HOST = "0.0.0.0"
 
 PORT = 5000
 
+SESIONES = {}
+lock_sesiones = threading.Lock
 
 MAX_CONNECTIONS = 1
 semaforo = threading.Semaphore(MAX_CONNECTIONS)
@@ -21,10 +24,27 @@ def procesar_peticion(pet):
 
         exito, saldo = banco.login(usuario, contraseña)
         if exito:
-            return {"status":"ok","mensaje":"Login con exito","saldo":float(saldo)}
+            token = str(uuid.uuid4())
+            with lock_sesiones:
+                 SESIONES[token] = usuario
+            return {"status":"ok","mensaje":"Login con exito","saldo":float(saldo), "token":token}
         else:
             return {"status":"error","mensaje":"Credenciales incorrectas"}
-        
+
+    token = pet.get("token")
+
+    with lock_sesiones:
+         usuario = SESIONES.get(token)
+
+    if not usuario:
+        return {"status": "error", "mensaje": "Sesión no válida o expirada"}   
+
+    elif accion == "logout":
+         with lock_sesiones:
+              SESIONES.pop(token, None)
+              return {"status": "ok", "mensaje": "Sesión cerrada correctamente"} 
+         
+    
     elif accion == "ingresar":
         usuario = pet.get("usuario")
         cantidad = float(pet.get("cantidad",0))
@@ -61,7 +81,7 @@ def procesar_peticion(pet):
 
 def atiende_cliente(con, addr):
      print(f"[+] Cliente conectado desde {addr}")
-
+     token_actual = None
      try:
           while True:
                datos = con.recv(1024).decode("utf-8")
@@ -69,12 +89,24 @@ def atiende_cliente(con, addr):
                     break
                peticion = json.loads(datos)
                respuesta = procesar_peticion(peticion)
+
+               if respuesta.get("status") == "ok" and "token" in respuesta:
+                token_actual = respuesta["token"]
+
+               elif peticion.get("accion") == "logout":
+                token_actual = None
+
                con.sendall(json.dumps(respuesta).encode("utf-8"))
 
      except Exception as e:
           print(f"[-] Error conectando con {addr}: {e}")
 
      finally:
+          with lock_sesiones:
+               SESIONES.pop(token_actual, None)
+
+          print(f"[*] Token de sesión eliminado por desconexión de {addr}")
+
           con.close()
           semaforo.release()
           print(f"[-] Conexion cerrada con {addr}")
