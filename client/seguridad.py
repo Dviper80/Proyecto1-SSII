@@ -4,7 +4,7 @@ import hmac
 import hashlib
 import json
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 PASSWORD = "clavesecreta_banco_tcp"
 
@@ -12,7 +12,7 @@ def cifrar_peticion(diccionario_datos):
     mensaje_original = json.dumps(diccionario_datos)
     salt = secrets.token_bytes(16)
     
-    kdf = Scrypt(salt=salt, length=32, n=2**16, r=8, p=1)
+    kdf = Argon2id(salt=salt, length=32, iterations=2, lanes=4, memory_cost=65536, ad=None, secret=None)
     clave_256_bits = kdf.derive(PASSWORD.encode('utf-8'))
     
     cifrador = Fernet(base64.urlsafe_b64encode(clave_256_bits))
