@@ -29,7 +29,7 @@ cifrador = Fernet(key_fernet)
 
 mensaje_cifrado = cifrador.encrypt(mensaje_original.encode('utf-8')).decode('utf-8')
 
-nonce = secrets.token_hex(2)
+nonce = secrets.token_hex(16)
 
 datos_a_firmar = f"{mensaje_cifrado}:{nonce}".encode('utf-8')
 mac = hmac.new(clave_256_bits, datos_a_firmar, hashlib.sha256).hexdigest()
@@ -68,3 +68,8 @@ descifrador = Fernet(base64.urlsafe_b64encode(clave_servidor))
 mensaje_descifrado = descifrador.decrypt(paquete_enviado["mensaje_cifrado"].encode('utf-8')).decode('utf-8')
 
 print("\n✓ Firma MAC válida. Mensaje Descifrado:", mensaje_descifrado)
+
+
+# 1) Se cifra el mensaje
+# 2) Se crea y añade el nonce
+# 3) Se crea el mac a partir de mensaje cifrado + nonce

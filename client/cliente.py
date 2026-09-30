@@ -3,7 +3,7 @@ import json
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
-HOST = "192.168.1.62" 
+HOST = "10.21.215.16" 
 
 PORT = 5000
 
