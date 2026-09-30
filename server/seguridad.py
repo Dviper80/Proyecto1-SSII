@@ -7,6 +7,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 PASSWORD = "clavesecreta_banco_tcp"
+nonces_procesados = set()
 
 def cifrar_peticion(diccionario_datos):
     mensaje_original = json.dumps(diccionario_datos)
@@ -38,6 +39,10 @@ def cifrar_peticion(diccionario_datos):
 def descifrar_peticion(datos_bytes):
     paquete_recibido = json.loads(datos_bytes.decode('utf-8'))
     salt_recibido = base64.b64decode(paquete_recibido["salt"])
+    nonce_recibido = paquete_recibido["nonce"]
+
+    if nonce_recibido in nonces_procesados:
+            raise ValueError("Ataque de repetición: Este paquete ya fue ejecutado.")
     
     kdf_servidor = Argon2id(salt=salt_recibido, length=32, iterations=2, lanes=4, memory_cost=65536, ad=None, secret=None)
     clave_compartida = kdf_servidor.derive(PASSWORD.encode('utf-8'))
@@ -54,6 +59,8 @@ def descifrar_peticion(datos_bytes):
     
     if not secrets.compare_digest(paquete_recibido["mac"], mac_esperado):
         raise ValueError("Error de Integridad: Firma MAC inválida o paquete alterado.")
+
+    nonces_procesados.add(nonce_recibido)
         
     descifrador = Fernet(base64.urlsafe_b64encode(clave_compartida))
     mensaje_descifrado = descifrador.decrypt(paquete_recibido["mensaje_cifrado"].encode('utf-8')).decode('utf-8')
