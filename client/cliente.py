@@ -1,5 +1,6 @@
 import socket
 import json
+import seguridad
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
@@ -9,9 +10,16 @@ PORT = 5000
 
 
 def enviar_peticion(sock, datos):
-    sock.sendall(json.dumps(datos).encode("utf-8"))
-    respuesta = sock.recv(1024).decode("utf-8")
-    return json.loads(respuesta)
+    paquete_cifrado = seguridad.cifrar_peticion(datos)
+    sock.sendall(paquete_cifrado)
+    
+    # 2. Recibir con un buffer mayor (4096) por el overhead de encriptación
+    respuesta_cifrada = sock.recv(4096)
+    if not respuesta_cifrada:
+        return {}
+        
+    # 3. Descifrar y devolver el diccionario original
+    return seguridad.descifrar_peticion(respuesta_cifrada)
 
 
 def inicia_cliente():
