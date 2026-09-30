@@ -9,7 +9,7 @@ HOST = "0.0.0.0"
 PORT = 5000
 
 SESIONES = {}
-lock_sesiones = threading.Lock
+lock_sesiones = threading.Lock()
 
 MAX_CONNECTIONS = 1
 semaforo = threading.Semaphore(MAX_CONNECTIONS)
@@ -46,7 +46,6 @@ def procesar_peticion(pet):
          
     
     elif accion == "ingresar":
-        usuario = pet.get("usuario")
         cantidad = float(pet.get("cantidad",0))
         if cantidad <= 0:
             return {"status":"error","mensaje":"La cantidad a ingresar debe ser positiva y mayor que 0"}
@@ -54,7 +53,6 @@ def procesar_peticion(pet):
         return {"status":"ok","mensaje":"La cantidad ha sido transferida con exito", "saldo":float(saldo_nuevo)}
 
     elif accion == "retirar":
-        usuario = pet.get("usuario")
         cantidad = float(pet.get("cantidad",0))
         if cantidad <= 0:
                     return {"status":"error","mensaje":"La cantidad a retirar debe ser positiva y mayor que 0"}
@@ -102,10 +100,11 @@ def atiende_cliente(con, addr):
           print(f"[-] Error conectando con {addr}: {e}")
 
      finally:
-          with lock_sesiones:
-               SESIONES.pop(token_actual, None)
+          if token_actual:
+               with lock_sesiones:
+                    SESIONES.pop(token_actual, None)
 
-          print(f"[*] Token de sesión eliminado por desconexión de {addr}")
+               print(f"[*] Token de sesión eliminado por desconexión de {addr}")
 
           con.close()
           semaforo.release()

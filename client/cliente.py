@@ -38,7 +38,7 @@ def inicia_cliente():
                 req = {"accion": "login", "usuario": usuario, "password": contraseña}
                 res = enviar_peticion(cliente_socket, req)
 
-                if res["status"] == "ok":
+                if res.get("status") == "ok":
                     token_sesion = res.get("token")
                     sesion_activa = usuario
                     print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
@@ -54,9 +54,9 @@ def inicia_cliente():
                 comando = entrada[0].lower()
 
                 if comando == 'logout':
-                    req = {"acccion": "logout", "token":token_sesion}
+                    req = {"accion": "logout", "token":token_sesion}
                     res = enviar_peticion(cliente_socket, req)
-                    print(f"[-] {res.get("mensaje")}")
+                    print(f"[-] {res.get('mensaje')}")
                     sesion_activa = None
                     token_sesion = None
 
@@ -102,9 +102,13 @@ def inicia_cliente():
                 else:
                     print("[-] Comandos válidos: ingresar <monto> | retirar <monto> | logout")
     except KeyboardInterrupt:
-        
-        print("\n[-] Saliendo...")
-
+        print("\n[-] Interrupción por teclado (Ctrl+C). Cerrando sesión...")
+        if token_sesion:
+            try:
+                req = {"accion": "logout", "token": token_sesion}
+                enviar_peticion(cliente_socket, req)
+            except Exception:
+                pass
     finally:
         cliente_socket.close()
 
