@@ -28,6 +28,11 @@ def cifrar_peticion(diccionario_datos):
         "mac": mac,
         "salt": base64.b64encode(salt).decode('utf-8')
     }
+    print("\n--- DEBUG CLIENTE ---")
+    print(f"1. Clave derivada (Hex): {clave_256_bits.hex()[:15]}...")
+    print(f"2. Salt (Base64): {base64.b64encode(salt).decode('utf-8')}")
+    print(f"3. MAC generado: {mac}")
+    print("---------------------\n")
     return json.dumps(paquete).encode('utf-8')
 
 def descifrar_peticion(datos_bytes):
@@ -39,6 +44,13 @@ def descifrar_peticion(datos_bytes):
     
     datos_esperados = f"{paquete_recibido['mensaje_cifrado']}:{paquete_recibido['nonce']}".encode('utf-8')
     mac_esperado = hmac.new(clave_compartida, datos_esperados, hashlib.sha256).hexdigest()
+
+    print("\n--- DEBUG SERVIDOR ---")
+    print(f"1. Clave derivada (Hex): {clave_compartida.hex()[:15]}...")
+    print(f"2. Salt recibido: {paquete_recibido['salt']}")
+    print(f"3. MAC esperado: {mac_esperado}")
+    print(f"4. MAC recibido: {paquete_recibido['mac']}")
+    print("----------------------\n")
     
     if not secrets.compare_digest(paquete_recibido["mac"], mac_esperado):
         raise ValueError("Error de Integridad: Firma MAC inválida o paquete alterado.")
