@@ -14,3 +14,6 @@ CREATE TABLE cuentas (
 -- Insertar un usuario de prueba (contraseña '1234' encriptada en SHA256)
 INSERT INTO cuentas (nombre, password_hash, saldo) 
 VALUES ('admin', SHA2('1234', 256), 100.00);cuentas
+
+INSERT INTO cuentas (nombre, password_hash, saldo) 
+VALUES ('admin', SHA2('1234', 256), 100.00);cuentas
