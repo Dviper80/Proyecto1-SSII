@@ -41,7 +41,7 @@ def descifrar_peticion(datos_bytes):
     paquete_recibido = json.loads(datos_bytes.decode('utf-8'))
     salt_recibido = base64.b64decode(paquete_recibido["salt"])
     
-    kdf_servidor = Scrypt(salt=salt_recibido, length=32, n=2**16, r=8, p=1)
+    kdf_servidor = Argon2id(salt=salt_recibido, length=32, iterations=2, lanes=4, memory_cost=65536, ad=None, secret=None)
     clave_compartida = kdf_servidor.derive(PASSWORD.encode('utf-8'))
     
     datos_esperados = f"{paquete_recibido['mensaje_cifrado']}:{paquete_recibido['nonce']}".encode('utf-8')
