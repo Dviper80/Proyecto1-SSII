@@ -18,34 +18,9 @@ import server.banco as banco
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
-HOST = "10.21.215.140" 
+HOST = "192.168.1.62" 
 
 PORT = 5000
-
-def registrar_usuario(usuario, password):
-    conexion = banco.conectar()
-    cursor = conexion.cursor()
-    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
-
-    try:
-        # Intentamos insertar. El saldo inicial será 0.00
-        cursor.execute("INSERT INTO cuentas (nombre, password_hash, saldo) VALUES (%s, %s, 0.00)", (usuario, pwd_hash))
-        conexion.commit()
-        exito = True
-        mensaje = f"[+] Cuenta '{usuario}' creada con éxito. Saldo inicial: 0.00€"
-    except mysql.connector.Error as err:
-        # El error 1062 es "Duplicate entry" (usuario ya existe por ser PRIMARY KEY)
-        if err.errno == 1062:
-            exito = False
-            mensaje = f"[-] Error: El nombre de usuario '{usuario}' ya está en uso."
-        else:
-            exito = False
-            mensaje = f"[-] Error inesperado de base de datos: {err}"
-    finally:
-        cursor.close()
-        conexion.close()
-    
-    return exito, mensaje
 
 def enviar_peticion(sock, datos):
     paquete_cifrado = seguridad.cifrar_peticion(datos)
@@ -104,16 +79,20 @@ def inicia_cliente():
                     if len(usuario) < 3 or len(contraseña) < 3:
                         print("[-] El usuario y la contraseña deben tener al menos 3 caracteres.")
                     else:
-                        # Aquí llamamos a la función registrar_usuario
-                        exito, mensaje = registrar_usuario(usuario, contraseña)
-                        print(mensaje)
+                        # NUEVO: El cliente solo envía los datos al servidor
+                        req = {"accion": "registrar", "usuario": usuario, "password": contraseña}
+                        res = enviar_peticion(cliente_socket, req)
+
+                        if res.get("status") == "ok":
+                            print(f"\n{res['mensaje']}")
+                        else:
+                            print(f"\n[-] {res['mensaje']}")
 
                 elif opcion == '3':
                     print("Saliendo del sistema...")
                     break
                 else:
                     print("[-] Opción no válida.")
-
             else:
                 entrada = input(f"\n({sesion_activa}) > ").strip().split()
                 if not entrada:
