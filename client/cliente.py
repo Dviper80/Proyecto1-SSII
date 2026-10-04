@@ -18,7 +18,7 @@ import server.banco as banco
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
-HOST = "192.168.1.62" 
+HOST = "192.168.1.90" 
 
 PORT = 5000
 
