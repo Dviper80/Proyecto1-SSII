@@ -1,13 +1,26 @@
 import socket
-import json
 import seguridad
+import sys
+import os
+import hashlib
+import mysql.connector
+
+ruta_padre = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+sys.path.append(ruta_padre)
+
+
+import server.banco as banco
+
+
+
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
-HOST = "192.168.1.90" 
+HOST = "192.168.1.62" 
 
 PORT = 5000
-
 
 def enviar_peticion(sock, datos):
     paquete_cifrado = seguridad.cifrar_peticion(datos)
@@ -39,21 +52,47 @@ def inicia_cliente():
     try:
         while True:
             if not token_sesion:
-                print("\n[--- INICIAR SESIÓN ---]")
-                usuario = input("Usuario: ")
-                contraseña = input("Contraseña: ")
+                print("\n[--- MENÚ PRINCIPAL ---]")
+                print("1. Iniciar sesión")
+                print("2. Crear nueva cuenta")
+                print("3. Salir")
+                opcion = input("Elige una opción (1/2/3): ").strip()
 
-                req = {"accion": "login", "usuario": usuario, "password": contraseña}
-                res = enviar_peticion(cliente_socket, req)
+                if opcion == '1':
+                    usuario = input("Usuario: ")
+                    contraseña = input("Contraseña: ")
 
-                if res.get("status") == "ok":
-                    token_sesion = res.get("token")
-                    sesion_activa = usuario
-                    print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    req = {"accion": "login", "usuario": usuario, "password": contraseña}
+                    res = enviar_peticion(cliente_socket, req)
+
+                    if res.get("status") == "ok":
+                        token_sesion = res.get("token")
+                        sesion_activa = usuario
+                        print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    else:
+                        print(f"\n[-] {res['mensaje']}. Inténtalo de nuevo.")
+                
+                elif opcion == '2':
+                    usuario = input("Nuevo usuario: ")
+                    contraseña = input("Nueva contraseña: ")
                     
-                else:
-                    print(f"\n[-] {res['mensaje']}. Inténtalo de nuevo.")
+                    if len(usuario) < 3 or len(contraseña) < 3:
+                        print("[-] El usuario y la contraseña deben tener al menos 3 caracteres.")
+                    else:
+                        # NUEVO: El cliente solo envía los datos al servidor
+                        req = {"accion": "registrar", "usuario": usuario, "password": contraseña}
+                        res = enviar_peticion(cliente_socket, req)
 
+                        if res.get("status") == "ok":
+                            print(f"\n{res['mensaje']}")
+                        else:
+                            print(f"\n[-] {res['mensaje']}")
+
+                elif opcion == '3':
+                    print("Saliendo del sistema...")
+                    break
+                else:
+                    print("[-] Opción no válida.")
             else:
                 entrada = input(f"\n({sesion_activa}) > ").strip().split()
                 if not entrada:

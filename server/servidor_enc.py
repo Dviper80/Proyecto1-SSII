@@ -1,9 +1,11 @@
 import socket
 import threading
-import json
 import uuid
 import banco
 import seguridad # Importación del módulo criptográfico
+import mysql.connector
+import hashlib # NUEVO: Para hashear la contraseña
+
 
 HOST = "0.0.0.0"
 PORT = 5000
@@ -30,6 +32,29 @@ def procesar_peticion(pet):
             return {"status":"ok","mensaje":"Login con exito","saldo":float(saldo), "token":token}
         else:
             return {"status":"error","mensaje":"Credenciales incorrectas"}
+        
+        # --- NUEVA ACCIÓN: REGISTRO EN EL SERVIDOR ---
+    if accion == "registrar":
+        usuario = pet.get("usuario")
+        contraseña = pet.get("password")
+        pwd_hash = hashlib.sha256(contraseña.encode()).hexdigest()
+
+        try:
+            conexion = banco.conectar()
+            cursor = conexion.cursor()
+            cursor.execute("INSERT INTO cuentas (nombre, password_hash, saldo) VALUES (%s, %s, 0.00)", (usuario, pwd_hash))
+            conexion.commit()
+            cursor.close()
+            conexion.close()
+            return {"status": "ok", "mensaje": f"[+] Cuenta '{usuario}' creada con éxito. Saldo inicial: 0.00€"}
+        except mysql.connector.Error as err:
+            if err.errno == 1062:
+                return {"status": "error", "mensaje": f"El nombre de usuario '{usuario}' ya está en uso."}
+            else:
+                return {"status": "error", "mensaje": f"Error inesperado de base de datos: {err}"}
+        except Exception as e:
+            return {"status": "error", "mensaje": f"Error del servidor: {e}"}
+
 
     token = pet.get("token")
 
