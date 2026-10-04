@@ -4,7 +4,7 @@ import seguridad
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
-HOST = "10.21.215.140" 
+HOST = "192.168.1.90" 
 
 PORT = 5000
 
