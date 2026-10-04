@@ -5,11 +5,14 @@ import banco
 import seguridad # Importación del módulo criptográfico
 import mysql.connector
 import hashlib # NUEVO: Para hashear la contraseña
+import time
 
 
 HOST = "0.0.0.0"
 PORT = 5000
-
+MAX_INTENTOS = 3
+TIEMPO_BLOQUEO = 300 # 300 segundos = 5 minutos de bloqueo temporal
+registro_intentos = {}
 SESIONES = {}
 lock_sesiones = threading.Lock() # CORRECCIÓN: Faltaban los paréntesis ()
 
@@ -24,14 +27,40 @@ def procesar_peticion(pet):
         usuario = pet.get("usuario")
         contraseña = pet.get("password")
 
+        tiempo_actual = time.time()
+        
+        # 1. Recuperar o inicializar el estado del usuario
+        estado_usuario = registro_intentos.get(usuario, {"fallos": 0, "bloqueado_hasta": 0})
+        
+        # 2. Comprobar si el usuario está actualmente penalizado
+        if estado_usuario["bloqueado_hasta"] > tiempo_actual:
+            tiempo_restante = int(estado_usuario["bloqueado_hasta"] - tiempo_actual)
+            return {"status": "error", "mensaje": f"Cuenta bloqueada por seguridad. Inténtalo en {tiempo_restante} segundos."}
+
+        # 3. Intentar el login en la base de datos
         exito, saldo = banco.login(usuario, contraseña)
+        
         if exito:
+            # Reseteamos el contador de fallos si entra correctamente
+            registro_intentos[usuario] = {"fallos": 0, "bloqueado_hasta": 0}
+            
             token = str(uuid.uuid4())
             with lock_sesiones:
                  SESIONES[token] = usuario
-            return {"status":"ok","mensaje":"Login con exito","saldo":float(saldo), "token":token}
+            return {"status": "ok", "mensaje": "Login con exito", "saldo": float(saldo), "token": token}
+            
         else:
-            return {"status":"error","mensaje":"Credenciales incorrectas"}
+            # 4. Registrar la falla y aplicar bloqueo si es necesario
+            estado_usuario["fallos"] += 1
+            
+            if estado_usuario["fallos"] >= MAX_INTENTOS:
+                estado_usuario["bloqueado_hasta"] = tiempo_actual + TIEMPO_BLOQUEO
+                registro_intentos[usuario] = estado_usuario
+                return {"status": "error", "mensaje": f"Demasiados intentos. Cuenta bloqueada temporalmente ({TIEMPO_BLOQUEO//60} min)."}
+            else:
+                registro_intentos[usuario] = estado_usuario
+                intentos_restantes = MAX_INTENTOS - estado_usuario["fallos"]
+                return {"status": "error", "mensaje": f"Credenciales incorrectas. Te quedan {intentos_restantes} intentos."}
         
         # --- NUEVA ACCIÓN: REGISTRO EN EL SERVIDOR ---
     if accion == "registrar":
