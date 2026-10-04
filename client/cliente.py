@@ -1,6 +1,20 @@
 import socket
-import json
 import seguridad
+import sys
+import os
+import hashlib
+import mysql.connector
+
+ruta_padre = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+sys.path.append(ruta_padre)
+
+
+import server.banco as banco
+
+
+
 
 '''Cambiar IP en caso de usar otro servidor 
                             (actualmente el portatil en mi casa)'''
@@ -8,6 +22,30 @@ HOST = "10.21.215.140"
 
 PORT = 5000
 
+def registrar_usuario(usuario, password):
+    conexion = banco.conectar()
+    cursor = conexion.cursor()
+    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    try:
+        # Intentamos insertar. El saldo inicial será 0.00
+        cursor.execute("INSERT INTO cuentas (nombre, password_hash, saldo) VALUES (%s, %s, 0.00)", (usuario, pwd_hash))
+        conexion.commit()
+        exito = True
+        mensaje = f"[+] Cuenta '{usuario}' creada con éxito. Saldo inicial: 0.00€"
+    except mysql.connector.Error as err:
+        # El error 1062 es "Duplicate entry" (usuario ya existe por ser PRIMARY KEY)
+        if err.errno == 1062:
+            exito = False
+            mensaje = f"[-] Error: El nombre de usuario '{usuario}' ya está en uso."
+        else:
+            exito = False
+            mensaje = f"[-] Error inesperado de base de datos: {err}"
+    finally:
+        cursor.close()
+        conexion.close()
+    
+    return exito, mensaje
 
 def enviar_peticion(sock, datos):
     paquete_cifrado = seguridad.cifrar_peticion(datos)
@@ -39,20 +77,42 @@ def inicia_cliente():
     try:
         while True:
             if not token_sesion:
-                print("\n[--- INICIAR SESIÓN ---]")
-                usuario = input("Usuario: ")
-                contraseña = input("Contraseña: ")
+                print("\n[--- MENÚ PRINCIPAL ---]")
+                print("1. Iniciar sesión")
+                print("2. Crear nueva cuenta")
+                print("3. Salir")
+                opcion = input("Elige una opción (1/2/3): ").strip()
 
-                req = {"accion": "login", "usuario": usuario, "password": contraseña}
-                res = enviar_peticion(cliente_socket, req)
+                if opcion == '1':
+                    usuario = input("Usuario: ")
+                    contraseña = input("Contraseña: ")
 
-                if res.get("status") == "ok":
-                    token_sesion = res.get("token")
-                    sesion_activa = usuario
-                    print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    req = {"accion": "login", "usuario": usuario, "password": contraseña}
+                    res = enviar_peticion(cliente_socket, req)
+
+                    if res.get("status") == "ok":
+                        token_sesion = res.get("token")
+                        sesion_activa = usuario
+                        print(f"\n[+] Login exitoso. Saldo actual: {res['saldo']:.2f}€")
+                    else:
+                        print(f"\n[-] {res['mensaje']}. Inténtalo de nuevo.")
+                
+                elif opcion == '2':
+                    usuario = input("Nuevo usuario: ")
+                    contraseña = input("Nueva contraseña: ")
                     
+                    if len(usuario) < 3 or len(contraseña) < 3:
+                        print("[-] El usuario y la contraseña deben tener al menos 3 caracteres.")
+                    else:
+                        # Aquí llamamos a la función registrar_usuario
+                        exito, mensaje = registrar_usuario(usuario, contraseña)
+                        print(mensaje)
+
+                elif opcion == '3':
+                    print("Saliendo del sistema...")
+                    break
                 else:
-                    print(f"\n[-] {res['mensaje']}. Inténtalo de nuevo.")
+                    print("[-] Opción no válida.")
 
             else:
                 entrada = input(f"\n({sesion_activa}) > ").strip().split()
