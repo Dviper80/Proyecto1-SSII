@@ -16,4 +16,4 @@ INSERT INTO cuentas (nombre, password_hash, saldo)
 VALUES ('admin', SHA2('1234', 256), 100.00);cuentas
 
 INSERT INTO cuentas (nombre, password_hash, saldo) 
-VALUES ('cliente', SHA2('password', 256), 50.00);cuentas
+VALUES ('cliente', SHA2('password', 256), 50.00);
