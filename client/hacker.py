@@ -3,7 +3,7 @@ import json
 import seguridad # Lo usamos solo para generar el paquete de la "víctima"
 
 # Cambia la IP si el servidor está en otra máquina
-HOST = "192.168.1.62" 
+HOST = "192.168.1.90" 
 PORT = 5000
 
 print("--- SIMULACIÓN DE ROBO DE TRÁFICO ---")
@@ -16,7 +16,7 @@ print(f"Paquete capturado en texto plano por el atacante:\n{paquete_interceptado
 import time
 import numpy as np # Opcional, para calcular la media fácilmente
 
-def evaluar_canal_lateral(iteraciones=50):
+def evaluar_canal_lateral(iteraciones=5):
     print("\n--- PRUEBA 3: ATAQUE DE CANAL LATERAL DE TIEMPO ---")
     
     tiempos_usuario_valido = []
@@ -79,9 +79,14 @@ def inyectar_ataque(nombre_ataque, payload_bytes):
         if not respuesta:
             print("[+] ÉXITO DEFENSIVO: El servidor detectó el ataque y cortó la conexión silenciosamente.\n")
         else:
-            print(f"[-] FALLO DEFENSIVO: El servidor respondió: {respuesta}\n")
-    except Exception as e:
-        print(f"[+] ÉXITO DEFENSIVO (Conexión rechazada/cerrada): {e}\n")
+            try:
+                res_descifrada = seguridad.descifrar_peticion(respuesta)
+                if res_descifrada.get("status") == "error":
+                    print(f"[+] ÉXITO DEFENSIVO: El servidor bloqueó el ataque -> {res_descifrada['mensaje']}")
+                else:
+                    print(f"[-] PELIGRO: El servidor aceptó la orden -> {res_descifrada}")
+            except Exception as e:
+                print(f"[+] ÉXITO DEFENSIVO (Conexión rechazada/cerrada): {e}\n")
     finally:
         s.close()
 
